@@ -1,30 +1,32 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using ClosedXML.Excel;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Services;
+using Google.Apis.Sheets.v4;
+using Google.Apis.Sheets.v4.Data;
 
 class Program
 {
     static string BOT_TOKEN = "8514836785:AAGcL9IPjD7lzZczN5g1qfGisTM0IyiH1ZU";
+    static string SPREADSHEET_ID = "1UkHGBQ7EqHpd4RFqQMzlDpz7FnYr4fUMEDyMRthiADI";
+    static string SHEET_NAME = "Sheet1";
 
     static ITelegramBotClient bot;
     static Dictionary<long, string> userState = new();
-    static string excelPath = "cashflow.xlsx";
+    static SheetsService sheetService;
 
     static async Task Main()
     {
         Console.WriteLine("Bot starting...");
 
-        if (!System.IO.File.Exists(excelPath))
-            CreateExcel();
-
         bot = new TelegramBotClient(BOT_TOKEN);
+        InitGoogleSheets();
 
         using var cts = new CancellationTokenSource();
 
@@ -38,12 +40,25 @@ class Program
         await Task.Delay(Timeout.Infinite);
     }
 
+    static void InitGoogleSheets()
+    {
+        GoogleCredential credential = GoogleCredential
+            .FromFile("google-key.json")
+            .CreateScoped(SheetsService.Scope.Spreadsheets);
+
+        sheetService = new SheetsService(new BaseClientService.Initializer()
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Telegram Cashflow Bot"
+        });
+    }
+
     static async Task HandleUpdateAsync(
         ITelegramBotClient botClient,
         Update update,
         CancellationToken ct)
     {
-        if (update.Type == UpdateType.Message && update.Message?.Text != null)
+        if (update.Type == UpdateType.Message && update.Message!.Text != null)
         {
             var chatId = update.Message.Chat.Id;
             var text = update.Message.Text;
@@ -58,10 +73,10 @@ class Program
             {
                 if (decimal.TryParse(text, out decimal amount))
                 {
-                    SaveToExcel(userState[chatId], amount);
+                    SaveToSheet(userState[chatId], amount);
                     userState.Remove(chatId);
 
-                    await botClient.SendTextMessageAsync(
+                    await botClient.SendMessage(
                         chatId,
                         $"✅ Saved RM {amount}\n\nPilih transaksi seterusnya 👇",
                         replyMarkup: MenuKeyboard()
@@ -69,10 +84,7 @@ class Program
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(
-                        chatId,
-                        "❌ Masukkan nombor sahaja"
-                    );
+                    await botClient.SendMessage(chatId, "❌ Masukkan nombor sahaja");
                 }
             }
         }
@@ -85,22 +97,16 @@ class Program
             if (query.Data == "IN")
             {
                 userState[chatId] = "IN";
-                await botClient.SendTextMessageAsync(
-                    chatId,
-                    "💰 Masukkan jumlah CASH IN:"
-                );
+                await botClient.SendMessage(chatId, "💰 Masukkan jumlah CASH IN:");
             }
 
             if (query.Data == "OUT")
             {
                 userState[chatId] = "OUT";
-                await botClient.SendTextMessageAsync(
-                    chatId,
-                    "💸 Masukkan jumlah CASH OUT:"
-                );
+                await botClient.SendMessage(chatId, "💸 Masukkan jumlah CASH OUT:");
             }
 
-            await botClient.AnswerCallbackQueryAsync(query.Id);
+            await botClient.AnswerCallbackQuery(query.Id);
         }
     }
 
@@ -109,13 +115,13 @@ class Program
         Exception ex,
         CancellationToken ct)
     {
-        Console.WriteLine(ex);
+        Console.WriteLine(ex.ToString());
         return Task.CompletedTask;
     }
 
     static async Task ShowMenu(long chatId)
     {
-        await bot.SendTextMessageAsync(
+        await bot.SendMessage(
             chatId,
             "📊 Pilih transaksi:",
             replyMarkup: MenuKeyboard()
@@ -134,34 +140,29 @@ class Program
         });
     }
 
-    // ================= EXCEL =================
-
-    static void CreateExcel()
+    static void SaveToSheet(string type, decimal amount)
     {
-        using var wb = new XLWorkbook();
-        var ws = wb.Worksheets.Add("CashFlow");
+        var values = new List<object>
+        {
+            DateTime.Now.ToString("dd/MM/yyyy"),
+            type == "IN" ? amount : "",
+            type == "OUT" ? amount : ""
+        };
 
-        ws.Cell(1, 1).Value = "Date";
-        ws.Cell(1, 2).Value = "IN";
-        ws.Cell(1, 3).Value = "OUT";
+        var body = new ValueRange
+        {
+            Values = new List<IList<object>> { values }
+        };
 
-        wb.SaveAs(excelPath);
-    }
+        var request = sheetService.Spreadsheets.Values.Append(
+            body,
+            SPREADSHEET_ID,
+            $"{SHEET_NAME}!A:C"
+        );
 
-    static void SaveToExcel(string type, decimal amount)
-    {
-        using var wb = new XLWorkbook(excelPath);
-        var ws = wb.Worksheet(1);
+        request.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
 
-        int row = ws.LastRowUsed()?.RowNumber() + 1 ?? 2;
-
-        ws.Cell(row, 1).Value = DateTime.Now.ToString("dd/MM/yyyy");
-
-        if (type == "IN")
-            ws.Cell(row, 2).Value = amount;
-        else
-            ws.Cell(row, 3).Value = amount;
-
-        wb.Save();
+        request.Execute();
     }
 }
