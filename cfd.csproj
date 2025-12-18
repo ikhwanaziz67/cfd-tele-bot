@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -7,10 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Telegram.Bot" Version="19.0.0" />
-    <PackageReference Include="ClosedXML" Version="0.102.3" />
+    <PackageReference Include="Telegram.Bot" Version="20.7.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.2" />
+    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.68.0.3150" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
   </ItemGroup>
-</Project>
-<PackageReference Include="Google.Apis.Sheets.v4" Version="1.68.0.3150" />
-<PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
 
+</Project>
