@@ -15,7 +15,7 @@ class Program
 {
     static string BOT_TOKEN = "8514836785:AAGcL9IPjD7lzZczN5g1qfGisTM0IyiH1ZU";
     static string SPREADSHEET_ID = "1UkHGBQ7EqHpd4RFqQMzlDpz7FnYr4fUMEDyMRthiADI";
-    static string SHEET_NAME = "Sheet1";
+    static string SHEET_NAME = "cashflow";
 
     static ITelegramBotClient bot;
     static Dictionary<long, string> userState = new();
@@ -162,7 +162,7 @@ class Program
         var request = sheetService.Spreadsheets.Values.Append(
             body,
             SPREADSHEET_ID,
-            $"{SHEET_NAME}!A:C"
+            $"{cashflow}!A:C"
         );
 
         request.ValueInputOption =
