@@ -162,7 +162,7 @@ class Program
         var request = sheetService.Spreadsheets.Values.Append(
             body,
             SPREADSHEET_ID,
-            $"{cashflow}!A:C"
+            $"{"cashflow"}!A:C"
         );
 
         request.ValueInputOption =
