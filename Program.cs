@@ -11,22 +11,20 @@ using ClosedXML.Excel;
 
 class Program
 {
-    // 🔑 TOKEN (yang kau bagi)
     static string BOT_TOKEN = "8514836785:AAGcL9IPjD7lzZczN5g1qfGisTM0IyiH1ZU";
 
-    static TelegramBotClient bot = new TelegramBotClient(BOT_TOKEN);
-
-    // Simpan state user
+    static ITelegramBotClient bot;
     static Dictionary<long, string> userState = new();
-
     static string excelPath = "cashflow.xlsx";
 
     static async Task Main()
     {
-        Console.WriteLine("Bot running...");
+        Console.WriteLine("Bot starting...");
 
-        if (!File.Exists(excelPath))
+        if (!System.IO.File.Exists(excelPath))
             CreateExcel();
+
+        bot = new TelegramBotClient(BOT_TOKEN);
 
         using var cts = new CancellationTokenSource();
 
@@ -36,13 +34,16 @@ class Program
             cancellationToken: cts.Token
         );
 
-        Console.ReadLine();
-        cts.Cancel();
+        Console.WriteLine("Bot is running...");
+        await Task.Delay(Timeout.Infinite);
     }
 
-    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken ct)
+    static async Task HandleUpdateAsync(
+        ITelegramBotClient botClient,
+        Update update,
+        CancellationToken ct)
     {
-        if (update.Type == UpdateType.Message && update.Message!.Text != null)
+        if (update.Type == UpdateType.Message && update.Message?.Text != null)
         {
             var chatId = update.Message.Chat.Id;
             var text = update.Message.Text;
@@ -60,7 +61,7 @@ class Program
                     SaveToExcel(userState[chatId], amount);
                     userState.Remove(chatId);
 
-                    await botClient.SendMessage(
+                    await botClient.SendTextMessageAsync(
                         chatId,
                         $"✅ Saved RM {amount}\n\nPilih transaksi seterusnya 👇",
                         replyMarkup: MenuKeyboard()
@@ -68,7 +69,10 @@ class Program
                 }
                 else
                 {
-                    await botClient.SendMessage(chatId, "❌ Masukkan nombor sahaja");
+                    await botClient.SendTextMessageAsync(
+                        chatId,
+                        "❌ Masukkan nombor sahaja"
+                    );
                 }
             }
         }
@@ -81,28 +85,37 @@ class Program
             if (query.Data == "IN")
             {
                 userState[chatId] = "IN";
-                await botClient.SendMessage(chatId, "💰 Masukkan jumlah CASH IN:");
+                await botClient.SendTextMessageAsync(
+                    chatId,
+                    "💰 Masukkan jumlah CASH IN:"
+                );
             }
 
             if (query.Data == "OUT")
             {
                 userState[chatId] = "OUT";
-                await botClient.SendMessage(chatId, "💸 Masukkan jumlah CASH OUT:");
+                await botClient.SendTextMessageAsync(
+                    chatId,
+                    "💸 Masukkan jumlah CASH OUT:"
+                );
             }
 
-            await botClient.AnswerCallbackQuery(query.Id);
+            await botClient.AnswerCallbackQueryAsync(query.Id);
         }
     }
 
-    static Task HandleErrorAsync(ITelegramBotClient botClient, Exception ex, CancellationToken ct)
+    static Task HandleErrorAsync(
+        ITelegramBotClient botClient,
+        Exception ex,
+        CancellationToken ct)
     {
-        Console.WriteLine(ex.Message);
+        Console.WriteLine(ex);
         return Task.CompletedTask;
     }
 
     static async Task ShowMenu(long chatId)
     {
-        await bot.SendMessage(
+        await bot.SendTextMessageAsync(
             chatId,
             "📊 Pilih transaksi:",
             replyMarkup: MenuKeyboard()
