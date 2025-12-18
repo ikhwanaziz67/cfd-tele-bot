@@ -41,17 +41,22 @@ class Program
     }
 
     static void InitGoogleSheets()
-    {
-        GoogleCredential credential = GoogleCredential
-            .FromFile("google-key.json")
-            .CreateScoped(SheetsService.Scope.Spreadsheets);
+{
+    var json = Environment.GetEnvironmentVariable("GOOGLE_CREDENTIALS");
 
-        sheetService = new SheetsService(new BaseClientService.Initializer()
-        {
-            HttpClientInitializer = credential,
-            ApplicationName = "Telegram Cashflow Bot"
-        });
-    }
+    if (string.IsNullOrEmpty(json))
+        throw new Exception("GOOGLE_CREDENTIALS env not found");
+
+    GoogleCredential credential = GoogleCredential
+        .FromJson(json)
+        .CreateScoped(SheetsService.Scope.Spreadsheets);
+
+    sheetService = new SheetsService(new BaseClientService.Initializer()
+    {
+        HttpClientInitializer = credential,
+        ApplicationName = "Telegram Cashflow Bot"
+    });
+}
 
     static async Task HandleUpdateAsync(
         ITelegramBotClient botClient,
