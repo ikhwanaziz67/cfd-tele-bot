@@ -11,3 +11,6 @@
     <PackageReference Include="ClosedXML" Version="0.102.3" />
   </ItemGroup>
 </Project>
+<PackageReference Include="Google.Apis.Sheets.v4" Version="1.68.0.3150" />
+<PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+
